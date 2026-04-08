@@ -29,7 +29,6 @@ Two generator scripts are provided:
 ```
 .
 ├── README.md
-
 ├── docs/
 │   └── images/                                 # Screenshots for README
 ├── catheter_urdf_generator.py                  # Passive simulation generator
