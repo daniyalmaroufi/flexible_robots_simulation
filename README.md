@@ -28,12 +28,17 @@ Two generator scripts are provided:
 
 ```
 .
+├── README.md
+
+├── docs/
+│   └── images/                                 # Screenshots for README
 ├── catheter_urdf_generator.py                  # Passive simulation generator
 ├── cath_urdf_generator_with_controller.py      # Active control simulation generator
 └── test_anatomy/                               # Example anatomical model (e.g. aortic arch)
     ├── meshes/                                 # Mesh files (.stl / .dae)
     ├── model.config                            # Gazebo model metadata
     └── model.sdf                               # Gazebo SDF model definition
+
 ```
 
 Each generator script produces a self-contained **ROS2 package** in the specified output directory:
