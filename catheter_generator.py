@@ -31,6 +31,7 @@ import math
 import argparse
 import numpy as np
 import os
+import struct
 
 
 class CatheterGenerator:
@@ -137,6 +138,65 @@ class CatheterGenerator:
                 f.write("  endfacet\n")
             f.write("endsolid cylinder\n")
         return stl_path
+
+    def _copy_stl_scaled(self, src_path, dst_path, scale):
+        """Copy an STL file with all vertex coordinates multiplied by *scale*.
+
+        Handles both ASCII and binary STL formats.  The output is always
+        written as binary STL (more compact and unambiguous).
+        """
+        # Detect format: binary STL must not start with "solid " followed by a
+        # valid ASCII preamble, but the safest heuristic is to try ASCII parse
+        # and fall back to binary.
+        with open(src_path, 'rb') as f:
+            raw = f.read()
+
+        triangles = []  # list of (normal_3f, v0_3f, v1_3f, v2_3f)
+
+        # ---- Try ASCII ----
+        text = raw.decode('ascii', errors='replace')
+        if text.lstrip().lower().startswith('solid'):
+            try:
+                lines = iter(text.splitlines())
+                for line in lines:
+                    if line.strip().lower().startswith('facet normal'):
+                        parts = line.strip().split()
+                        normal = (float(parts[2]), float(parts[3]), float(parts[4]))
+                        next(lines)  # outer loop
+                        verts = []
+                        for _ in range(3):
+                            vline = next(lines).strip().split()
+                            verts.append((float(vline[1]) * scale,
+                                          float(vline[2]) * scale,
+                                          float(vline[3]) * scale))
+                        triangles.append((normal, verts[0], verts[1], verts[2]))
+            except (StopIteration, ValueError, IndexError):
+                triangles = []  # fall through to binary
+
+        # ---- Try binary if ASCII parse yielded nothing ----
+        if not triangles:
+            # skip 80-byte header + 4-byte triangle count
+            offset = 84
+            n_tri = struct.unpack_from('<I', raw, 80)[0]
+            for _ in range(n_tri):
+                vals = struct.unpack_from('<12f', raw, offset)
+                normal = vals[0:3]
+                v0 = (vals[3] * scale, vals[4] * scale, vals[5] * scale)
+                v1 = (vals[6] * scale, vals[7] * scale, vals[8] * scale)
+                v2 = (vals[9] * scale, vals[10] * scale, vals[11] * scale)
+                triangles.append((normal, v0, v1, v2))
+                offset += 50  # 12 floats × 4 bytes + 2-byte attribute
+
+        # ---- Write binary STL ----
+        with open(dst_path, 'wb') as f:
+            f.write(b'\0' * 80)                          # header
+            f.write(struct.pack('<I', len(triangles)))   # triangle count
+            for normal, v0, v1, v2 in triangles:
+                f.write(struct.pack('<3f', *normal))
+                f.write(struct.pack('<3f', *v0))
+                f.write(struct.pack('<3f', *v1))
+                f.write(struct.pack('<3f', *v2))
+                f.write(b'\x00\x00')                     # attribute byte count
 
     # ─────────────────────────────────────────────────────────────────────────
     # ROS2 package files
@@ -563,9 +623,9 @@ ament_package()'''
         if self.anatomy_stl:
             ax, ay, az = self.anatomy_xyz
             ar, ap, ayaw = self.anatomy_rpy
-            sc = self.anatomy_scale
             anatomy_block = f'''
     <!-- Anatomy model: mesh path (__ANATOMY_MESH_PATH__) resolved at launch time -->
+    <!-- Vertices are pre-scaled to metres by catheter_generator.py -->
     <model name="anatomy">
       <static>true</static>
       <pose>{ax} {ay} {az} {ar} {ap} {ayaw}</pose>
@@ -574,7 +634,7 @@ ament_package()'''
           <geometry>
             <mesh>
               <uri>file://__ANATOMY_MESH_PATH__</uri>
-              <scale>{sc} {sc} {sc}</scale>
+              <scale>1 1 1</scale>
             </mesh>
           </geometry>
           <material>
@@ -587,7 +647,7 @@ ament_package()'''
           <geometry>
             <mesh>
               <uri>file://__ANATOMY_MESH_PATH__</uri>
-              <scale>{sc} {sc} {sc}</scale>
+              <scale>1 1 1</scale>
             </mesh>
           </geometry>
           <surface>
@@ -634,14 +694,6 @@ ament_package()'''
     <model name="ground_plane">
       <static>true</static>
       <link name="link">
-        <collision name="collision">
-          <geometry>
-            <plane>
-              <normal>0 0 1</normal>
-              <size>100 100</size>
-            </plane>
-          </geometry>
-        </collision>
         <visual name="visual">
           <geometry>
             <plane>
@@ -984,7 +1036,7 @@ def generate_launch_description():
             ET.SubElement(vis, 'origin', xyz='0 0 0', rpy='0 0 0')
             mesh_el = ET.SubElement(ET.SubElement(vis, 'geometry'), 'mesh')
             mesh_el.set('filename', f'package://{package_name}/meshes/{anatomy_basename}')
-            mesh_el.set('scale', f'{self.anatomy_scale} {self.anatomy_scale} {self.anatomy_scale}')
+            mesh_el.set('scale', '1 1 1')
             amat = ET.SubElement(vis, 'material', name='anatomy_material')
             ET.SubElement(amat, 'color', rgba='0.8 0.2 0.2 0.5')
 
@@ -1186,9 +1238,11 @@ if __name__ == \'__main__\':
         cmake_path   = self.generate_cmakelists_txt()
 
         if self.anatomy_stl:
-            import shutil
-            shutil.copy2(self.anatomy_stl,
-                         os.path.join(self.meshes_dir, os.path.basename(self.anatomy_stl)))
+            self._copy_stl_scaled(
+                self.anatomy_stl,
+                os.path.join(self.meshes_dir, os.path.basename(self.anatomy_stl)),
+                self.anatomy_scale,
+            )
 
         sdf_path    = self.generate_sdf(filename)
         launch_path = self.generate_launch_file(filename)
