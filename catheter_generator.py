@@ -332,10 +332,9 @@ class CatheterGenerator:
 
     def create_package_structure(self):
         for d in [self.package_dir, self.meshes_dir, self.urdf_dir,
-                  self.sdf_dir, self.launch_dir, self.worlds_dir, self.config_dir]:
+                  self.sdf_dir, self.launch_dir, self.worlds_dir,
+                  self.config_dir, self.scripts_dir]:
             os.makedirs(d, exist_ok=True)
-        if self.with_controller:
-            os.makedirs(self.scripts_dir, exist_ok=True)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Mesh generation
@@ -472,6 +471,8 @@ class CatheterGenerator:
   <exec_depend>xacro</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>rclpy</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
@@ -490,11 +491,19 @@ class CatheterGenerator:
 
     def generate_cmakelists_txt(self):
         package_name = os.path.basename(self.package_dir)
-        scripts_block = (
-            f'\ninstall(PROGRAMS scripts/catheter_keyboard_teleop.py\n'
-            f'  DESTINATION lib/${{PROJECT_NAME}}\n)\n'
-            if self.with_controller else ''
-        )
+        if self.with_controller:
+            scripts_block = (
+                f'\ninstall(PROGRAMS\n'
+                f'  scripts/catheter_pose_broadcaster.py\n'
+                f'  scripts/catheter_keyboard_teleop.py\n'
+                f'  DESTINATION lib/${{PROJECT_NAME}}\n)\n'
+            )
+        else:
+            scripts_block = (
+                f'\ninstall(PROGRAMS\n'
+                f'  scripts/catheter_pose_broadcaster.py\n'
+                f'  DESTINATION lib/${{PROJECT_NAME}}\n)\n'
+            )
         content = f'''cmake_minimum_required(VERSION 3.8)
 project({package_name})
 
@@ -1040,44 +1049,37 @@ ament_package()'''
         launch_arguments={{'gz_args': f'-r {{custom_world_file}}'}}.items(),
     )'''
 
-        # Passive mode: static_transform_publisher starts after RSP (via
-        # OnProcessStart) and publishes world → base_link at the initial pose.
-        # Because it publishes to /tf_static AFTER RSP's world_to_base (which is
-        # fixed at origin in the URDF), it wins in the tf2 transient-local cache
-        # so RViz always shows the catheter at the correct initial position.
+        # Passive mode: a custom broadcaster script publishes world → base_link
+        # on /tf (not /tf_static) at 10 Hz with current timestamps.
+        # Dynamic /tf entries have current timestamps which always take
+        # precedence over RSP's /tf_static entry (timestamp = 0).
         if not self.with_controller:
             initial_pose_tf_block = f'''
-    # ── Initial pose: world → base_link static TF ───────────────────────────
-    # Published after RSP so it overrides the URDF's world_to_base (at origin).
-    initial_pose_tf = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='catheter_initial_pose_broadcaster',
-        arguments=[
-            '--x',     LaunchConfiguration('initial_x'),
-            '--y',     LaunchConfiguration('initial_y'),
-            '--z',     LaunchConfiguration('initial_z'),
-            '--roll',  LaunchConfiguration('initial_roll'),
-            '--pitch', LaunchConfiguration('initial_pitch'),
-            '--yaw',   LaunchConfiguration('initial_yaw'),
-            '--frame-id',       'world',
-            '--child-frame-id', 'base_link',
-        ],
-    )
-    start_initial_pose_tf = RegisterEventHandler(
-        OnProcessStart(target_action=rsp_node, on_start=[initial_pose_tf])
+    # ── Initial pose: world → base_link dynamic TF ──────────────────────────
+    # The URDF fixes world_to_base at origin; this broadcaster continuously
+    # publishes the real initial offset on /tf with current timestamps, which
+    # overrides the static entry and keeps RViz aligned with Gazebo.
+    pose_broadcaster = Node(
+        package='{package_name}',
+        executable='catheter_pose_broadcaster.py',
+        name='catheter_pose_broadcaster',
+        parameters=[{{
+            'x':     LaunchConfiguration('initial_x'),
+            'y':     LaunchConfiguration('initial_y'),
+            'z':     LaunchConfiguration('initial_z'),
+            'roll':  LaunchConfiguration('initial_roll'),
+            'pitch': LaunchConfiguration('initial_pitch'),
+            'yaw':   LaunchConfiguration('initial_yaw'),
+        }}],
+        output='screen',
     )
 '''
-            ld_initial_pose_entry = '        start_initial_pose_tf,'
+            ld_initial_pose_entry = '        pose_broadcaster,'
         else:
             initial_pose_tf_block = ''
             ld_initial_pose_entry = ''
 
         event_handler_imports = (
-            'from launch.actions import (DeclareLaunchArgument, IncludeLaunchDescription,\n'
-            '                             OpaqueFunction, RegisterEventHandler)\n'
-            'from launch.event_handlers import OnProcessStart'
-            if not self.with_controller else
             'from launch.actions import (DeclareLaunchArgument, IncludeLaunchDescription,\n'
             '                             OpaqueFunction)'
         )
@@ -1118,7 +1120,7 @@ def generate_launch_description():
 
     # ── robot_state_publisher ────────────────────────────────────────────────
     # Process the xacro once at launch-description time.  The initial pose is
-    # NOT baked into the URDF here; it is applied by static_transform_publisher
+    # NOT baked into the URDF here; it is applied by catheter_pose_broadcaster
     # (passive mode) or by the Gazebo spawn pose (controller mode).
     config = xacro.process_file(
         os.path.join(pkg_share, 'urdf', '{xacro_filename}')
@@ -1230,6 +1232,96 @@ Window Geometry:
         path = os.path.join(self.config_dir, 'rviz_config.rviz')
         with open(path, 'w') as f:
             f.write(content)
+        return path
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Pose broadcaster (passive mode only)
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def generate_pose_broadcaster(self):
+        """Generate a Python ROS2 node that broadcasts world→base_link on /tf.
+
+        Dynamic /tf entries (with current timestamps) always take precedence
+        over robot_state_publisher's /tf_static entry for the world_to_base
+        fixed joint (which has epoch timestamp 0).  This guarantees that the
+        catheter appears at the launch-time initial position in RViz without
+        any startup race condition.
+        """
+        content = '''\
+#!/usr/bin/env python3
+"""Broadcasts world → base_link on /tf at 10 Hz.
+
+Reads the initial catheter pose from ROS2 parameters (x, y, z, roll, pitch,
+yaw) and continuously republishes it as a dynamic TF.  Because dynamic /tf
+entries carry current timestamps they always override robot_state_publisher's
+/tf_static entry for the world_to_base joint (epoch timestamp 0), so RViz
+always shows the catheter at the correct initial position.
+"""
+import math
+
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import TransformStamped
+from tf2_ros import TransformBroadcaster
+
+
+class CatheterPoseBroadcaster(Node):
+    def __init__(self):
+        super().__init__('catheter_pose_broadcaster')
+
+        self.declare_parameter('x',     0.0)
+        self.declare_parameter('y',     0.0)
+        self.declare_parameter('z',     0.0)
+        self.declare_parameter('roll',  0.0)
+        self.declare_parameter('pitch', 0.0)
+        self.declare_parameter('yaw',   0.0)
+
+        x     = self.get_parameter('x').value
+        y     = self.get_parameter('y').value
+        z     = self.get_parameter('z').value
+        roll  = self.get_parameter('roll').value
+        pitch = self.get_parameter('pitch').value
+        yaw   = self.get_parameter('yaw').value
+
+        self._tf = TransformStamped()
+        self._tf.header.frame_id = 'world'
+        self._tf.child_frame_id  = 'base_link'
+        self._tf.transform.translation.x = x
+        self._tf.transform.translation.y = y
+        self._tf.transform.translation.z = z
+
+        # Euler ZYX → quaternion
+        cr, sr = math.cos(roll  / 2), math.sin(roll  / 2)
+        cp, sp = math.cos(pitch / 2), math.sin(pitch / 2)
+        cy, sy = math.cos(yaw   / 2), math.sin(yaw   / 2)
+        self._tf.transform.rotation.w = cr * cp * cy + sr * sp * sy
+        self._tf.transform.rotation.x = sr * cp * cy - cr * sp * sy
+        self._tf.transform.rotation.y = cr * sp * cy + sr * cp * sy
+        self._tf.transform.rotation.z = cr * cp * sy - sr * sp * cy
+
+        self._br = TransformBroadcaster(self)
+        self.create_timer(0.1, self._publish)
+
+    def _publish(self):
+        self._tf.header.stamp = self.get_clock().now().to_msg()
+        self._br.sendTransform(self._tf)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = CatheterPoseBroadcaster()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+'''
+        path = os.path.join(self.scripts_dir, 'catheter_pose_broadcaster.py')
+        with open(path, 'w') as f:
+            f.write(content)
+        os.chmod(path, 0o755)
         return path
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -1644,10 +1736,11 @@ if __name__ == \'__main__\':
                 flip_xy=model.get('flip_xy', False),
             )
 
-        sdf_path    = self.generate_sdf(filename)
-        launch_path = self.generate_launch_file(filename)
-        world_path  = self.generate_custom_world()
-        rviz_path   = self.generate_rviz_config()
+        sdf_path       = self.generate_sdf(filename)
+        launch_path    = self.generate_launch_file(filename)
+        world_path     = self.generate_custom_world()
+        rviz_path      = self.generate_rviz_config()
+        broadcaster_path = self.generate_pose_broadcaster()
 
         teleop_path = None
         if self.with_controller:
