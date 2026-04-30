@@ -6,6 +6,8 @@ A single generator script `catheter_generator.py` supports two modes:
 - **Passive mode** (default) — passive deformation simulation (observe catheter deflection under external forces)
 - **Active mode** (`--controller`) — active control simulation with a 4-DOF motorized base and keyboard teleoperation
 
+This folder also includes `ctr_generator.py` for a simple **2-DOF concentric tube robot (CTR)** package generator.
+
 The script optionally includes anatomical models in the generated package, making them visible in **both Gazebo and RViz** automatically:
 - **`--anatomy-stl`** — import a single STL file at a manually specified pose
 - **`--slicer-scene`** — import all models from a 3D Slicer MRML scene file, with their positions and orientations derived automatically from any linear transforms in the scene
@@ -22,6 +24,7 @@ The script optionally includes anatomical models in the generated package, makin
 - [Usage](#usage)
   - [Passive Catheter Simulation](#passive-catheter-simulation)
   - [Controlled Catheter Simulation with Keyboard Teleop](#controlled-catheter-simulation-with-keyboard-teleop)
+    - [Concentric Tube Robot (CTR) Generator + Teleop](#concentric-tube-robot-ctr-generator--teleop)
 - [Including Anatomy Models](#including-anatomy-models)
   - [From a 3D Slicer MRML Scene (recommended)](#from-a-3d-slicer-mrml-scene-recommended)
   - [Single STL file](#single-stl-file)
@@ -39,6 +42,7 @@ The script optionally includes anatomical models in the generated package, makin
 ├── docs/
 │   └── images/                                 # Screenshots for README
 ├── catheter_generator.py                       # Unified generator (passive + active modes)
+├── ctr_generator.py                            # 2-DOF concentric tube robot package generator
 ├── slicer_scene/                               # Example 3D Slicer scene
 │   ├── 2026-04-14-Scene.mrml                   # MRML scene file (heart + aorta)
 │   ├── heart.stl                               # Heart surface mesh
@@ -195,6 +199,64 @@ The teleop node publishes to the following ROS2 topics:
 - `/base_y_joint/cmd_pos`
 - `/base_z_joint/cmd_pos`
 - `/base_rotation_joint/cmd_pos`
+
+---
+
+### Concentric Tube Robot (CTR) Generator + Teleop
+
+`ctr_generator.py` creates a separate ROS2 package for a 2-DOF CTR model:
+- `inner_insertion_joint` (prismatic)
+- `inner_rotation_joint` (revolute)
+
+Geometry used by default:
+- outer tube: length `30 mm`, ID `4.0 mm`, OD `5.0 mm`
+- inner tube: arc length `30 mm`, curvature radius `50 mm`, ID `3.1 mm`, OD `3.6 mm`
+
+**Step 1: Generate CTR package**
+
+```bash
+cd /home/dm55947-admin/Documents/danislicer/src/flexible_catheter_simulation
+python3 ctr_generator.py --output ctr_package
+```
+
+**Step 2: Build**
+
+```bash
+cd /home/dm55947-admin/Documents/danislicer/src/flexible_catheter_simulation
+source /opt/ros/humble/setup.bash
+colcon build --packages-select ctr_package
+```
+
+**Step 3: Launch CTR display in RViz**
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch ctr_package ctr_display.launch.py
+```
+
+**Step 4: Launch CTR teleop in RViz**
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch ctr_package ctr_teleop.launch.py
+```
+
+**CTR keyboard controls:**
+
+| Key | Action |
+|-----|--------|
+| `w` / `s` | Insert / retract inner tube |
+| `a` / `d` | Rotate inner tube |
+| `r` | Reset insertion and rotation |
+| `q` | Quit teleop |
+
+If `xacro` command errors appear, install it:
+
+```bash
+sudo apt install -y ros-humble-xacro
+```
 
 ---
 

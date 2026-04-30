@@ -1,0 +1,557 @@
+<?xml version="1.0"?>
+        <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ctr">
+          <xacro:property name="outer_length" value="0.030000"/>
+          <xacro:property name="inner_length" value="0.030000"/>
+          <xacro:property name="outer_inner_diameter" value="0.004000"/>
+          <xacro:property name="outer_outer_diameter" value="0.005000"/>
+          <xacro:property name="inner_inner_diameter" value="0.003100"/>
+          <xacro:property name="inner_outer_diameter" value="0.003600"/>
+          <xacro:property name="curvature_radius" value="0.050000"/>
+          <xacro:property name="inner_segments" value="15"/>
+          <xacro:property name="bend_angle_per_joint" value="0.04000000"/>
+
+          <link name="world"/>
+
+          <link name="outer_tube_link">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/outer_tube.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="outer_mat">
+                <color rgba="0.35 0.55 0.95 0.35"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/outer_tube.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.01"/>
+              <origin xyz="0 0 0.015000" rpy="0 0 0"/>
+              <inertia ixx="1e-4" iyy="1e-4" izz="1e-4" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="base_x_link"/>
+          <link name="base_y_link"/>
+          <link name="base_z_link"/>
+          <link name="inner_carriage_link"/>
+          <link name="inner_base_link"/>
+
+          <joint name="base_x_joint" type="prismatic">
+            <parent link="world"/>
+            <child link="base_x_link"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <axis xyz="1 0 0"/>
+            <limit lower="-2.0" upper="2.0" effort="10.0" velocity="0.2"/>
+          </joint>
+
+          <joint name="base_y_joint" type="prismatic">
+            <parent link="base_x_link"/>
+            <child link="base_y_link"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-2.0" upper="2.0" effort="10.0" velocity="0.2"/>
+          </joint>
+
+          <joint name="base_z_joint" type="prismatic">
+            <parent link="base_y_link"/>
+            <child link="base_z_link"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="-2.0" upper="2.0" effort="10.0" velocity="0.2"/>
+          </joint>
+
+          <joint name="base_to_outer" type="fixed">
+            <parent link="base_z_link"/>
+            <child link="outer_tube_link"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+          </joint>
+
+          <joint name="inner_insertion_joint" type="prismatic">
+            <parent link="outer_tube_link"/>
+            <child link="inner_carriage_link"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="0.0" upper="0.03" effort="10.0" velocity="0.05"/>
+          </joint>
+
+          <joint name="inner_rotation_joint" type="revolute">
+            <parent link="inner_carriage_link"/>
+            <child link="inner_base_link"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <axis xyz="0 0 1"/>
+            <limit lower="-3.14159" upper="3.14159" effort="1.0" velocity="2.0"/>
+          </joint>
+
+
+          <link name="inner_segment_1">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_2">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_3">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_4">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_5">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_6">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_7">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_8">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_9">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_10">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_11">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_12">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_13">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_14">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+          <link name="inner_segment_15">
+            <visual>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+              <material name="inner_mat">
+                <color rgba="0.95 0.45 0.25 1.0"/>
+              </material>
+            </visual>
+            <collision>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <geometry>
+                <mesh filename="package://ctr_package/meshes/inner_segment.stl" scale="1 1 1"/>
+              </geometry>
+            </collision>
+            <inertial>
+              <mass value="0.0007"/>
+              <origin xyz="0 0 0" rpy="0 0 0"/>
+              <inertia ixx="1e-6" iyy="1e-6" izz="1e-6" ixy="0" ixz="0" iyz="0"/>
+            </inertial>
+          </link>
+
+
+          <joint name="inner_bend_joint_1" type="revolute">
+            <parent link="inner_base_link"/>
+            <child link="inner_segment_1"/>
+            <origin xyz="0 0 0.000000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_2" type="revolute">
+            <parent link="inner_segment_1"/>
+            <child link="inner_segment_2"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_3" type="revolute">
+            <parent link="inner_segment_2"/>
+            <child link="inner_segment_3"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_4" type="revolute">
+            <parent link="inner_segment_3"/>
+            <child link="inner_segment_4"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_5" type="revolute">
+            <parent link="inner_segment_4"/>
+            <child link="inner_segment_5"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_6" type="revolute">
+            <parent link="inner_segment_5"/>
+            <child link="inner_segment_6"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_7" type="revolute">
+            <parent link="inner_segment_6"/>
+            <child link="inner_segment_7"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_8" type="revolute">
+            <parent link="inner_segment_7"/>
+            <child link="inner_segment_8"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_9" type="revolute">
+            <parent link="inner_segment_8"/>
+            <child link="inner_segment_9"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_10" type="revolute">
+            <parent link="inner_segment_9"/>
+            <child link="inner_segment_10"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_11" type="revolute">
+            <parent link="inner_segment_10"/>
+            <child link="inner_segment_11"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_12" type="revolute">
+            <parent link="inner_segment_11"/>
+            <child link="inner_segment_12"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_13" type="revolute">
+            <parent link="inner_segment_12"/>
+            <child link="inner_segment_13"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_14" type="revolute">
+            <parent link="inner_segment_13"/>
+            <child link="inner_segment_14"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+          <joint name="inner_bend_joint_15" type="revolute">
+            <parent link="inner_segment_14"/>
+            <child link="inner_segment_15"/>
+            <origin xyz="0 0 0.002000" rpy="0 0 0"/>
+            <axis xyz="0 1 0"/>
+            <limit lower="-0.04000000" upper="0.04000000" effort="2.0" velocity="1.0"/>
+          </joint>
+
+        </robot>
